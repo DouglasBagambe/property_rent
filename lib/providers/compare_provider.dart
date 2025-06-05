@@ -16,35 +16,23 @@ class CompareProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> addToCompare(String propertyId) async {
-    if (_compareList.length >= 3) {
-      return false;
-    }
-    if (!_compareList.contains(propertyId)) {
-      await _storage.addToCompare(propertyId);
-      _compareList.add(propertyId);
-      notifyListeners();
-      return true;
-    }
-    return false;
+  Future<void> addToCompare(String propertyId) async {
+    await _storage.addToCompare(propertyId);
+    await _loadCompareList();
   }
 
   Future<void> removeFromCompare(String propertyId) async {
-    if (_compareList.contains(propertyId)) {
-      await _storage.removeFromCompare(propertyId);
-      _compareList.remove(propertyId);
-      notifyListeners();
-    }
+    await _storage.removeFromCompare(propertyId);
+    await _loadCompareList();
   }
 
-  bool isInCompareList(String propertyId) {
-    return _compareList.contains(propertyId);
-  }
-
-  Future<void> clearCompareList() async {
+  Future<void> clearCompare() async {
     await _storage.clearCompareList();
-    _compareList.clear();
-    notifyListeners();
+    await _loadCompareList();
+  }
+
+  bool isInCompare(String propertyId) {
+    return _compareList.contains(propertyId);
   }
 
   bool canAddMore() {

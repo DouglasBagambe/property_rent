@@ -289,7 +289,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 value: _selectedPurpose,
                 decoration: const InputDecoration(
                   labelText: 'Purpose',
-                  prefixIcon: Icon(Icons.purpose_outlined),
+                  prefixIcon: Icon(Icons.description_outlined),
                 ),
                 items: _purposes.map((purpose) {
                   return DropdownMenuItem(

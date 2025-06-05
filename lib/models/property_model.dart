@@ -11,6 +11,8 @@ class Property {
   final double appointmentFee;
   final PropertySize size;
   final List<PropertyTag> tags;
+  final List<String> amenities;
+  final PropertyAgent agent;
   final bool isActive;
   final bool isFeatured;
   final DateTime datePosted;
@@ -28,6 +30,8 @@ class Property {
     required this.appointmentFee,
     required this.size,
     required this.tags,
+    required this.amenities,
+    required this.agent,
     required this.isActive,
     required this.isFeatured,
     required this.datePosted,
@@ -55,6 +59,8 @@ class Property {
                 (e) => e.toString() == 'PropertyTag.$tag',
               ))
           .toList(),
+      amenities: List<String>.from(json['amenities'] ?? []),
+      agent: PropertyAgent.fromJson(json['agent']),
       isActive: json['isActive'],
       isFeatured: json['isFeatured'],
       datePosted: DateTime.parse(json['datePosted']),
@@ -75,6 +81,8 @@ class Property {
       'appointmentFee': appointmentFee,
       'size': size.toJson(),
       'tags': tags.map((tag) => tag.toString().split('.').last).toList(),
+      'amenities': amenities,
+      'agent': agent.toJson(),
       'isActive': isActive,
       'isFeatured': isFeatured,
       'datePosted': datePosted.toIso8601String(),
@@ -126,6 +134,42 @@ class PropertySize {
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'dimensions': dimensions,
+    };
+  }
+}
+
+class PropertyAgent {
+  final String name;
+  final String role;
+  final String photo;
+  final String phone;
+  final String email;
+
+  PropertyAgent({
+    required this.name,
+    required this.role,
+    required this.photo,
+    required this.phone,
+    required this.email,
+  });
+
+  factory PropertyAgent.fromJson(Map<String, dynamic> json) {
+    return PropertyAgent(
+      name: json['name'],
+      role: json['role'],
+      photo: json['photo'],
+      phone: json['phone'],
+      email: json['email'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'role': role,
+      'photo': photo,
+      'phone': phone,
+      'email': email,
     };
   }
 } 

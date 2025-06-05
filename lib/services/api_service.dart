@@ -88,8 +88,9 @@ class ApiService {
     required String name,
     required String email,
     required String phone,
-    required DateTime preferredDate,
-    required String message,
+    required DateTime appointmentTime,
+    required String duration,
+    required String purpose,
   }) async {
     try {
       final response = await http.post(
@@ -100,8 +101,9 @@ class ApiService {
           'name': name,
           'email': email,
           'phone': phone,
-          'preferredDate': preferredDate.toIso8601String(),
-          'message': message,
+          'appointmentTime': appointmentTime.toIso8601String(),
+          'duration': duration,
+          'purpose': purpose,
         }),
       );
 

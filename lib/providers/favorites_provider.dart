@@ -16,15 +16,14 @@ class FavoritesProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> toggleFavorite(String propertyId) async {
-    if (_favorites.contains(propertyId)) {
-      await _storage.removeFromFavorites(propertyId);
-      _favorites.remove(propertyId);
-    } else {
-      await _storage.addToFavorites(propertyId);
-      _favorites.add(propertyId);
-    }
-    notifyListeners();
+  Future<void> addFavorite(String propertyId) async {
+    await _storage.addToFavorites(propertyId);
+    await _loadFavorites();
+  }
+
+  Future<void> removeFavorite(String propertyId) async {
+    await _storage.removeFromFavorites(propertyId);
+    await _loadFavorites();
   }
 
   bool isFavorite(String propertyId) {

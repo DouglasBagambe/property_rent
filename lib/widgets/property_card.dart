@@ -51,7 +51,13 @@ class PropertyCard extends StatelessWidget {
                         return Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            onTap: () => favorites.toggleFavorite(property.id),
+                            onTap: () {
+                              if (favorites.isFavorite(property.id)) {
+                                favorites.removeFavorite(property.id);
+                              } else {
+                                favorites.addFavorite(property.id);
+                              }
+                            },
                             customBorder: const CircleBorder(),
                             child: Container(
                               padding: const EdgeInsets.all(8),
@@ -78,7 +84,7 @@ class PropertyCard extends StatelessWidget {
                     right: 56,
                     child: Consumer<CompareProvider>(
                       builder: (context, compare, child) {
-                        final isInCompare = compare.isInCompareList(property.id);
+                        final isInCompare = compare.isInCompare(property.id);
                         return Material(
                           color: Colors.transparent,
                           child: InkWell(
