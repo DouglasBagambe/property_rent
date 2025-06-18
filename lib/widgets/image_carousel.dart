@@ -3,17 +3,19 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 class ImageCarousel extends StatefulWidget {
   final List<String> images;
+  final double height;
   final double aspectRatio;
   final bool showIndicators;
   final bool autoPlay;
 
   const ImageCarousel({
-    super.key,
+    Key? key,
     required this.images,
+    this.height = 200,
     this.aspectRatio = 16 / 9,
     this.showIndicators = true,
     this.autoPlay = true,
-  });
+  }) : super(key: key);
 
   @override
   State<ImageCarousel> createState() => _ImageCarouselState();
@@ -60,62 +62,60 @@ class _ImageCarouselState extends State<ImageCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Image carousel
-        PageView.builder(
-          controller: _pageController,
-          onPageChanged: (index) {
-            setState(() {
-              _currentPage = index;
-            });
-          },
-          itemCount: widget.images.length,
-          itemBuilder: (context, index) {
-            return AspectRatio(
-              aspectRatio: widget.aspectRatio,
-              child: CachedNetworkImage(
-                imageUrl: widget.images[index],
+    return SizedBox(
+      height: widget.height,
+      child: Stack(
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            itemCount: widget.images.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentPage = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return Image.network(
+                widget.images[index],
                 fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  color: Colors.grey[200],
-                  child: const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  color: Colors.grey[200],
-                  child: const Icon(Icons.error),
-                ),
-              ),
-            );
-          },
-        ),
-        // Page indicators
-        if (widget.showIndicators && widget.images.length > 1)
-          Positioned(
-            bottom: 8,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                widget.images.length,
-                (index) => Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _currentPage == index
-                        ? Colors.white
-                        : Colors.white.withOpacity(0.5),
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.grey[200],
+                    child: const Icon(
+                      Icons.error_outline,
+                      color: Colors.grey,
+                      size: 40,
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+          if (widget.images.length > 1)
+            Positioned(
+              bottom: 8,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  widget.images.length,
+                  (index) => Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _currentPage == index
+                          ? Theme.of(context).primaryColor
+                          : Colors.white.withOpacity(0.5),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 } 

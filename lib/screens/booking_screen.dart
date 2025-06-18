@@ -17,17 +17,40 @@ class BookingScreen extends StatefulWidget {
 
 class _BookingScreenState extends State<BookingScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _apiService = ApiService();
-  bool _isLoading = false;
+  late Property _property;
+  bool _isLoading = true;
+  String? _error;
+  DateTime _selectedDate = DateTime.now();
+  TimeOfDay _selectedTime = TimeOfDay.now();
+  String _purpose = 'Viewing';
+  String _notes = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProperty();
+  }
+
+  Future<void> _loadProperty() async {
+    try {
+      final property = await ApiService.getPropertyById(widget.property.id);
+      setState(() {
+        _property = property;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
 
   // Form fields
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
-  DateTime? _selectedDate;
-  TimeOfDay? _selectedTime;
   String? _selectedDuration;
-  String? _selectedPurpose;
 
   final List<String> _durations = ['30 minutes', '1 hour', '1.5 hours', '2 hours'];
   final List<String> _purposes = [
@@ -67,34 +90,34 @@ class _BookingScreenState extends State<BookingScreen> {
     }
   }
 
-  Future<void> _submitBooking() async {
+  Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedDate == null || _selectedTime == null || _selectedDuration == null || _selectedPurpose == null) {
+    if (_selectedDate == null || _selectedTime == null || _selectedDuration == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
+        const SnackBar(content: Text('Please fill in all required fields')),
       );
       return;
     }
 
     setState(() => _isLoading = true);
-
     try {
       final appointment = DateTime(
-        _selectedDate!.year,
-        _selectedDate!.month,
-        _selectedDate!.day,
-        _selectedTime!.hour,
-        _selectedTime!.minute,
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day,
+        _selectedTime.hour,
+        _selectedTime.minute,
       );
 
-      await _apiService.bookAppointment(
-        propertyId: widget.property.id,
+      await ApiService.bookAppointment(
+        propertyId: _property.id,
         name: _nameController.text,
         phone: _phoneController.text,
         email: _emailController.text,
         appointmentTime: appointment,
         duration: _selectedDuration!,
-        purpose: _selectedPurpose!,
+        purpose: _purpose,
+        notes: _notes,
       );
 
       if (mounted) {
@@ -137,14 +160,14 @@ class _BookingScreenState extends State<BookingScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.property.title,
+                        _property.title,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        widget.property.location,
+                        _property.location,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: Theme.of(context).colorScheme.secondary,
                         ),
@@ -158,7 +181,7 @@ class _BookingScreenState extends State<BookingScreen> {
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           Text(
-                            'UGX ${widget.property.appointmentFee.toStringAsFixed(0)}',
+                            'UGX ${_property.appointmentFee.toStringAsFixed(0)}',
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               color: Theme.of(context).colorScheme.primary,
                               fontWeight: FontWeight.bold,
@@ -241,7 +264,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 title: Text(
                   _selectedDate == null
                       ? 'Select Date'
-                      : DateFormat('EEEE, MMMM d, y').format(_selectedDate!),
+                      : DateFormat('EEEE, MMMM d, y').format(_selectedDate),
                 ),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () => _selectDate(context),
@@ -254,7 +277,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 title: Text(
                   _selectedTime == null
                       ? 'Select Time'
-                      : _selectedTime!.format(context),
+                      : _selectedTime.format(context),
                 ),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () => _selectTime(context),
@@ -286,7 +309,7 @@ class _BookingScreenState extends State<BookingScreen> {
               const SizedBox(height: 16),
               // Purpose Selection
               DropdownButtonFormField<String>(
-                value: _selectedPurpose,
+                value: _purpose,
                 decoration: const InputDecoration(
                   labelText: 'Purpose',
                   prefixIcon: Icon(Icons.description_outlined),
@@ -298,7 +321,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   );
                 }).toList(),
                 onChanged: (value) {
-                  setState(() => _selectedPurpose = value);
+                  setState(() => _purpose = value!);
                 },
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -312,7 +335,7 @@ class _BookingScreenState extends State<BookingScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submitBooking,
+                  onPressed: _isLoading ? null : _submitForm,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),

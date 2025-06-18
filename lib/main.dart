@@ -16,8 +16,9 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        Provider<LocalStorageService>.value(value: storage),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => FavoritesProvider(storage)),
+        ChangeNotifierProvider(create: (_) => FavoritesProvider()),
         ChangeNotifierProvider(create: (_) => CompareProvider(storage)),
       ],
       child: const MyApp(),
@@ -32,7 +33,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
-        return MaterialApp(
+    return MaterialApp(
           title: 'Uganda Real Estate',
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,

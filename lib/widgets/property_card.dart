@@ -5,203 +5,162 @@ import '../providers/favorites_provider.dart';
 import '../providers/compare_provider.dart';
 import 'image_carousel.dart';
 import 'property_tags.dart';
+import '../services/api_service.dart';
 
-class PropertyCard extends StatelessWidget {
-  final Property property;
-  final VoidCallback? onTap;
-  final bool showActions;
+class PropertyCard extends StatefulWidget {
+  final String propertyId;
 
   const PropertyCard({
-    super.key,
-    required this.property,
-    this.onTap,
-    this.showActions = true,
-  });
+    Key? key,
+    required this.propertyId,
+  }) : super(key: key);
+
+  @override
+  State<PropertyCard> createState() => _PropertyCardState();
+}
+
+class _PropertyCardState extends State<PropertyCard> {
+  Property? _property;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProperty();
+  }
+
+  Future<void> _loadProperty() async {
+    try {
+      final property = await ApiService.getProperty(widget.propertyId);
+      setState(() {
+        _property = property;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(child: Text('Error: $_error'));
+    }
+
+    if (_property == null) {
+      return const Center(child: Text('Property not found'));
+    }
+
     return Card(
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image carousel
-            Stack(
-              children: [
-                SizedBox(
-                  height: 200,
-                  child: ImageCarousel(
-                    images: property.images,
-                    aspectRatio: 16 / 9,
-                  ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              ImageCarousel(
+                images: _property!.images,
+                height: 200,
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Row(
+                  children: [
+                    Consumer<FavoritesProvider>(
+                      builder: (context, favoritesProvider, child) {
+                        final isFavorite = favoritesProvider.isFavorite(_property!.id);
+                        return IconButton(
+                          icon: Icon(
+                            isFavorite ? Icons.favorite : Icons.favorite_border,
+                            color: isFavorite ? Colors.red : Colors.white,
+                          ),
+                          onPressed: () {
+                            favoritesProvider.toggleFavorite(_property!.id);
+                          },
+                        );
+                      },
+                    ),
+                    Consumer<CompareProvider>(
+                      builder: (context, compareProvider, child) {
+                        final isInCompare = compareProvider.isInCompare(_property!.id);
+                        final canAdd = compareProvider.compareList.length < 2 || isInCompare;
+                        return IconButton(
+                          icon: Icon(
+                            isInCompare ? Icons.compare_arrows : Icons.compare_arrows_outlined,
+                            color: isInCompare ? Theme.of(context).colorScheme.primary : Colors.white,
+                          ),
+                          onPressed: canAdd
+                              ? () {
+                                  if (isInCompare) {
+                                    compareProvider.removeFromCompare(_property!.id);
+                                  } else {
+                                    compareProvider.addToCompare(_property!.id);
+                                  }
+                                }
+                              : null,
+                        );
+                      },
+                    ),
+                  ],
                 ),
-                if (showActions) ...[
-                  // Favorite button
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Consumer<FavoritesProvider>(
-                      builder: (context, favorites, child) {
-                        final isFavorite = favorites.isFavorite(property.id);
-                        return Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              if (favorites.isFavorite(property.id)) {
-                                favorites.removeFavorite(property.id);
-                              } else {
-                                favorites.addFavorite(property.id);
-                              }
-                            },
-                            customBorder: const CircleBorder(),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.9),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                isFavorite
-                                    ? Icons.favorite_rounded
-                                    : Icons.favorite_border_rounded,
-                                color: isFavorite ? Colors.red : Colors.grey,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _property!.title,
+                  style: Theme.of(context).textTheme.titleLarge,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _property!.location,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[600],
                   ),
-                  // Compare button
-                  Positioned(
-                    top: 8,
-                    right: 56,
-                    child: Consumer<CompareProvider>(
-                      builder: (context, compare, child) {
-                        final isInCompare = compare.isInCompare(property.id);
-                        return Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              if (isInCompare) {
-                                compare.removeFromCompare(property.id);
-                              } else if (compare.canAddMore()) {
-                                compare.addToCompare(property.id);
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('You can compare up to 3 properties'),
-                                  ),
-                                );
-                              }
-                            },
-                            customBorder: const CircleBorder(),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.9),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                isInCompare
-                                    ? Icons.compare_arrows_rounded
-                                    : Icons.compare_arrows_outlined,
-                                color: isInCompare
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Colors.grey,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'UGX ${_property!.price.toStringAsFixed(0)}',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Theme.of(context).primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                ],
+                    Text(
+                      _property!.type.toString().split('.').last,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-            // Property details
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Price and type
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'UGX ${property.price.toStringAsFixed(0)}',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          property.type.toString().split('.').last,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Title
-                  Text(
-                    property.title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  // Location
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        size: 16,
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          property.location,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.secondary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Tags
-                  PropertyTags(tags: property.tags),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

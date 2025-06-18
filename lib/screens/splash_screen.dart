@@ -47,7 +47,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   Future<void> _checkOnboardingStatus() async {
-    final storage = Provider.of<LocalStorageService>(context, listen: false);
+    if (!mounted) return;
+    
+    final storage = context.read<LocalStorageService>();
     final isOnboardingCompleted = await storage.isOnboardingCompleted();
 
     if (!mounted) return;

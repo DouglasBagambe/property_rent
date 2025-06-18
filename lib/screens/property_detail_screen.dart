@@ -15,18 +15,18 @@ class PropertyDetailScreen extends StatefulWidget {
   final String propertyId;
 
   const PropertyDetailScreen({
-    super.key,
+    Key? key,
     required this.propertyId,
-  });
+  }) : super(key: key);
 
   @override
   State<PropertyDetailScreen> createState() => _PropertyDetailScreenState();
 }
 
 class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
-  final ApiService _apiService = ApiService();
-  Property? _property;
+  late Property _property;
   bool _isLoading = true;
+  String? _error;
   int _currentImageIndex = 0;
 
   @override
@@ -37,18 +37,16 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
   Future<void> _loadProperty() async {
     try {
-      final property = await _apiService.getPropertyById(widget.propertyId);
+      final property = await ApiService.getPropertyById(widget.propertyId);
       setState(() {
         _property = property;
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading property: $e')),
-        );
-      }
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
@@ -88,13 +86,13 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 children: [
                   // Image Carousel
                   PageView.builder(
-                    itemCount: _property!.images.length,
+                    itemCount: _property.images.length,
                     onPageChanged: (index) {
                       setState(() => _currentImageIndex = index);
                     },
                     itemBuilder: (context, index) {
                       return Image.network(
-                        _property!.images[index],
+                        _property.images[index],
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return Container(
@@ -132,7 +130,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        '${_currentImageIndex + 1}/${_property!.images.length}',
+                        '${_currentImageIndex + 1}/${_property.images.length}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -151,7 +149,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               // Favorite Button
               Consumer<FavoritesProvider>(
                 builder: (context, favoritesProvider, child) {
-                  final isFavorite = favoritesProvider.isFavorite(_property!.id);
+                  final isFavorite = favoritesProvider.isFavorite(_property.id);
                   return IconButton(
                     icon: Icon(
                       isFavorite ? Icons.favorite : Icons.favorite_border,
@@ -159,9 +157,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     ),
                     onPressed: () {
                       if (isFavorite) {
-                        favoritesProvider.removeFavorite(_property!.id);
+                        favoritesProvider.removeFavorite(_property.id);
                       } else {
-                        favoritesProvider.addFavorite(_property!.id);
+                        favoritesProvider.addFavorite(_property.id);
                       }
                     },
                   );
@@ -170,7 +168,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               // Compare Button
               Consumer<CompareProvider>(
                 builder: (context, compareProvider, child) {
-                  final isInCompare = compareProvider.isInCompare(_property!.id);
+                  final isInCompare = compareProvider.isInCompare(_property.id);
                   return IconButton(
                     icon: Icon(
                       isInCompare ? Icons.compare_arrows : Icons.compare_arrows_outlined,
@@ -178,9 +176,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     ),
                     onPressed: () {
                       if (isInCompare) {
-                        compareProvider.removeFromCompare(_property!.id);
+                        compareProvider.removeFromCompare(_property.id);
                       } else {
-                        compareProvider.addToCompare(_property!.id);
+                        compareProvider.addToCompare(_property.id);
                       }
                     },
                   );
@@ -201,14 +199,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          _property!.title,
+                          _property.title,
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
                       Text(
-                        'UGX ${_property!.price.toStringAsFixed(0)}',
+                        'UGX ${_property.price.toStringAsFixed(0)}',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: Theme.of(context).colorScheme.primary,
                           fontWeight: FontWeight.bold,
@@ -228,7 +226,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          _property!.location,
+                          _property.location,
                           style: TextStyle(
                             color: Colors.grey[600],
                           ),
@@ -242,12 +240,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     children: [
                       _buildInfoChip(
                         icon: Icons.home,
-                        label: _property!.type.toString().split('.').last,
+                        label: _property.type.toString().split('.').last,
                       ),
                       const SizedBox(width: 8),
                       _buildInfoChip(
                         icon: Icons.sell,
-                        label: _property!.purpose.toString().split('.').last,
+                        label: _property.purpose.toString().split('.').last,
                       ),
                     ],
                   ),
@@ -261,7 +259,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _property!.description,
+                    _property.description,
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 24),
@@ -276,7 +274,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: _property!.amenities.map((amenity) {
+                    children: _property.amenities.map((amenity) {
                       return Chip(
                         label: Text(amenity),
                         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
@@ -305,7 +303,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           children: [
                             CircleAvatar(
                               radius: 24,
-                              backgroundImage: NetworkImage(_property!.agent.photo),
+                              backgroundImage: NetworkImage(_property.agent.photo),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -313,15 +311,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    _property!.agent.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
+                                    _property.agent.name,
+                                    style: Theme.of(context).textTheme.titleMedium,
                                   ),
                                   Text(
-                                    _property!.agent.role,
-                                    style: TextStyle(
+                                    'Senior Agent',
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                       color: Colors.grey[600],
                                     ),
                                   ),

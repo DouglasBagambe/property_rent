@@ -13,9 +13,9 @@ class FavoritesScreen extends StatefulWidget {
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
-  final _apiService = ApiService();
-  bool _isLoading = false;
   List<Property> _properties = [];
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -24,25 +24,17 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Future<void> _loadProperties() async {
-    final favoritesProvider = Provider.of<FavoritesProvider>(context, listen: false);
-    if (favoritesProvider.favorites.isEmpty) return;
-
-    setState(() => _isLoading = true);
     try {
-      final properties = await Future.wait(
-        favoritesProvider.favorites.map((id) => _apiService.getPropertyById(id)),
-      );
+      final properties = await ApiService.getRecentProperties();
       setState(() {
         _properties = properties;
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading properties: $e')),
-        );
-      }
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
@@ -135,7 +127,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               itemCount: _properties.length,
               itemBuilder: (context, index) {
                 final property = _properties[index];
-                return PropertyCard(property: property);
+                return PropertyCard(
+                  propertyId: property.id,
+                );
               },
             ),
           );

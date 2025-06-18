@@ -13,9 +13,9 @@ class CompareScreen extends StatefulWidget {
 }
 
 class _CompareScreenState extends State<CompareScreen> {
-  final _apiService = ApiService();
-  bool _isLoading = false;
   List<Property> _properties = [];
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -24,344 +24,206 @@ class _CompareScreenState extends State<CompareScreen> {
   }
 
   Future<void> _loadProperties() async {
-    final compareProvider = Provider.of<CompareProvider>(context, listen: false);
-    if (compareProvider.compareList.isEmpty) return;
-
-    setState(() => _isLoading = true);
     try {
-      final properties = await Future.wait(
-        compareProvider.compareList.map((id) => _apiService.getPropertyById(id)),
-      );
+      final compareProvider = Provider.of<CompareProvider>(context, listen: false);
+      final ids = List<String>.from(compareProvider.compareList);
+      final properties = <Property>[];
+      for (final id in ids) {
+        try {
+          final property = await ApiService.getPropertyById(id);
+          properties.add(property);
+        } catch (e) {
+          // If any property fails to load, clear the compare list and break
+          await compareProvider.clearCompare();
+          setState(() {
+            _error = 'One or more compared properties no longer exist. Compare list has been cleared.';
+            _isLoading = false;
+          });
+          return;
+        }
+      }
       setState(() {
         _properties = properties;
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading properties: $e')),
-        );
-      }
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(child: Text('Error: $_error'));
+    }
+
+    if (_properties.length != 2) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('Please select exactly 2 properties to compare'),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Go Back'),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Compare Properties'),
         actions: [
-          Consumer<CompareProvider>(
-            builder: (context, compare, child) {
-              if (compare.compareList.isEmpty) return const SizedBox.shrink();
-              return IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Clear Comparison'),
-                      content: const Text(
-                        'Are you sure you want to clear all properties from comparison?',
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            compare.clearCompare();
-                            Navigator.pop(context);
-                          },
-                          child: const Text('Clear'),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              );
+          IconButton(
+            icon: const Icon(Icons.clear_all),
+            onPressed: () {
+              Provider.of<CompareProvider>(context, listen: false).clearCompare();
+              Navigator.pop(context);
             },
           ),
         ],
       ),
-      body: Consumer<CompareProvider>(
-        builder: (context, compare, child) {
-          if (compare.compareList.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Icon(
-                    Icons.compare_arrows,
-                    size: 64,
-                    color: Colors.grey[400],
+                  Expanded(
+                    child: PropertyCard(propertyId: _properties[0].id),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No properties to compare',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Add properties to compare from the property details screen',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.grey[600],
-                    ),
-                    textAlign: TextAlign.center,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: PropertyCard(propertyId: _properties[1].id),
                   ),
                 ],
               ),
-            );
-          }
-
-          if (_isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Property Cards
-                SizedBox(
-                  height: 300,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _properties.length,
-                    itemBuilder: (context, index) {
-                      final property = _properties[index];
-                      return SizedBox(
-                        width: 200,
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 16),
-                          child: PropertyCard(property: property),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // Comparison Table
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Property Details',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildComparisonTable(),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Amenities Comparison
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Amenities',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildAmenitiesComparison(),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildComparisonTable() {
-    return Table(
-      columnWidths: const {
-        0: FlexColumnWidth(2),
-        1: FlexColumnWidth(3),
-        2: FlexColumnWidth(3),
-        3: FlexColumnWidth(3),
-      },
-      children: [
-        // Header
-        TableRow(
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: Theme.of(context).dividerColor,
+              const SizedBox(height: 24),
+              _buildComparisonSection(
+                'Price',
+                [
+                  'UGX ${_properties[0].price.toStringAsFixed(0)}',
+                  'UGX ${_properties[1].price.toStringAsFixed(0)}',
+                ],
               ),
-            ),
-          ),
-          children: [
-            const SizedBox.shrink(),
-            ..._properties.map((property) => Padding(
-              padding: const EdgeInsets.all(8),
-              child: Text(
-                property.title,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              _buildComparisonSection(
+                'Location',
+                [_properties[0].location, _properties[1].location],
               ),
-            )),
-          ],
-        ),
-        // Price
-        _buildTableRow(
-          'Price',
-          _properties.map((p) => 'UGX ${p.price.toStringAsFixed(0)}').toList(),
-        ),
-        // Type
-        _buildTableRow(
-          'Type',
-          _properties.map((p) => p.type.toString().split('.').last).toList(),
-        ),
-        // Purpose
-        _buildTableRow(
-          'Purpose',
-          _properties.map((p) => p.purpose.toString().split('.').last).toList(),
-        ),
-        // Location
-        _buildTableRow(
-          'Location',
-          _properties.map((p) => p.location).toList(),
-        ),
-        // Size
-        _buildTableRow(
-          'Size',
-          _properties.map((p) => p.size.dimensions ?? 'N/A').toList(),
-        ),
-        // Bedrooms
-        _buildTableRow(
-          'Bedrooms',
-          _properties.map((p) => p.size.bedrooms?.toString() ?? 'N/A').toList(),
-        ),
-        // Bathrooms
-        _buildTableRow(
-          'Bathrooms',
-          _properties.map((p) => p.size.bathrooms?.toString() ?? 'N/A').toList(),
-        ),
-        // Appointment Fee
-        _buildTableRow(
-          'Appointment Fee',
-          _properties.map((p) => 'UGX ${p.appointmentFee.toStringAsFixed(0)}').toList(),
-        ),
-      ],
-    );
-  }
-
-  TableRow _buildTableRow(String label, List<String> values) {
-    return TableRow(
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).dividerColor,
+              _buildComparisonSection(
+                'Type',
+                [
+                  _properties[0].type.toString().split('.').last,
+                  _properties[1].type.toString().split('.').last,
+                ],
+              ),
+              _buildComparisonSection(
+                'Purpose',
+                [
+                  _properties[0].purpose.toString().split('.').last,
+                  _properties[1].purpose.toString().split('.').last,
+                ],
+              ),
+              _buildComparisonSection(
+                'Size',
+                [
+                  '${_properties[0].size.totalArea} sq ft',
+                  '${_properties[1].size.totalArea} sq ft',
+                ],
+              ),
+              _buildComparisonSection(
+                'Bedrooms',
+                [
+                  _properties[0].size.bedrooms.toString(),
+                  _properties[1].size.bedrooms.toString(),
+                ],
+              ),
+              _buildComparisonSection(
+                'Bathrooms',
+                [
+                  _properties[0].size.bathrooms.toString(),
+                  _properties[1].size.bathrooms.toString(),
+                ],
+              ),
+              _buildComparisonSection(
+                'Amenities',
+                [
+                  _properties[0].amenities.join(', '),
+                  _properties[1].amenities.join(', '),
+                ],
+              ),
+              _buildComparisonSection(
+                'Date Posted',
+                [
+                  _properties[0].datePosted.toString().split(' ')[0],
+                  _properties[1].datePosted.toString().split(' ')[0],
+                ],
+              ),
+            ],
           ),
         ),
       ),
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.w500),
-          ),
-        ),
-        ...values.map((value) => Padding(
-          padding: const EdgeInsets.all(8),
-          child: Text(value),
-        )),
-      ],
     );
   }
 
-  Widget _buildAmenitiesComparison() {
-    // Get all unique amenities
-    final allAmenities = _properties
-        .expand((p) => p.amenities)
-        .toSet()
-        .toList()
-      ..sort();
-
-    return Table(
-      columnWidths: const {
-        0: FlexColumnWidth(2),
-        1: FlexColumnWidth(3),
-        2: FlexColumnWidth(3),
-        3: FlexColumnWidth(3),
-      },
-      children: [
-        // Header
-        TableRow(
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: Theme.of(context).dividerColor,
-              ),
-            ),
+  Widget _buildComparisonSection(String title, List<String> values) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
           ),
-          children: [
-            const SizedBox.shrink(),
-            ..._properties.map((property) => Padding(
-              padding: const EdgeInsets.all(8),
-              child: Text(
-                property.title,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                  child: Text(values[0]),
+                ),
               ),
-            )),
-          ],
-        ),
-        // Amenities
-        ...allAmenities.map((amenity) => TableRow(
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: Theme.of(context).dividerColor,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                  child: Text(values[1]),
+                ),
               ),
-            ),
+            ],
           ),
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Text(
-                amenity,
-                style: const TextStyle(fontWeight: FontWeight.w500),
-              ),
-            ),
-            ..._properties.map((property) => Padding(
-              padding: const EdgeInsets.all(8),
-              child: Icon(
-                property.amenities.contains(amenity)
-                    ? Icons.check_circle
-                    : Icons.cancel,
-                color: property.amenities.contains(amenity)
-                    ? Colors.green
-                    : Colors.red,
-              ),
-            )),
-          ],
-        )),
-      ],
+        ],
+      ),
     );
   }
 } 
