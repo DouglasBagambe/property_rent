@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/local_storage_service.dart';
+import './admin_dashboard_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -275,6 +276,25 @@ class SettingsScreen extends StatelessWidget {
               ],
             ),
           ),
+
+          Padding(
+  padding: const EdgeInsets.all(16),
+  child: ElevatedButton(
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => AdminDashboardScreen()),
+      );
+    },
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Theme.of(context).colorScheme.error,
+      foregroundColor: Theme.of(context).colorScheme.onError,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+    ),
+    child: const Text('Admin panel'),
+  ),
+),
+
           // Sign Out
           Padding(
             padding: const EdgeInsets.all(16),

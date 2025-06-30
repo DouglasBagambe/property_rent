@@ -83,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final showNavBar = _currentIndex != 2;
+    final showNavBar = true;
     return Scaffold(
       body: _isLoading
           ? _buildLoadingScreen()
@@ -129,9 +129,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               child: SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _buildNavItem(0, Icons.home_rounded, 'Home'),
                       _buildNavItem(1, Icons.favorite_rounded, 'Favorites'),
@@ -157,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       onTap: () => _onTabTapped(index),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: isSelected 
               ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
@@ -237,17 +237,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       case 1:
         return const FavoritesScreen();
       case 2:
-        WidgetsBinding.instance.addPostFrameCallback((_) async {
-          await Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const ExploreScreen()),
-          );
-          if (mounted) {
-            setState(() {
-              _currentIndex = 0;
-            });
-          }
-        });
-        return _buildHomeContent();
+        return const ExploreScreen();
       case 3:
         return const CompareScreen();
       case 4:
@@ -314,7 +304,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(width: 12),
           Text(
-            'PropMart',
+            'WarlNest',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
               color: Theme.of(context).colorScheme.onSurface,
